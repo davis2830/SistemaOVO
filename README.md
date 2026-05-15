@@ -124,6 +124,27 @@ python manage.py runserver
 |--------|-----|-------------|
 | GET/POST | `/api/v1/delivery/routes/` | Rutas de entrega |
 
+### Facturación (FEL)
+| Método | URL | Descripción |
+|--------|-----|-------------|
+| GET/POST | `/api/v1/billing/invoices/` | Facturas (crear desde pedido DELIVERED) |
+| POST | `/api/v1/billing/invoices/{id}/certify/` | Certificar vía FEL |
+| POST | `/api/v1/billing/invoices/{id}/cancel/` | Anular factura certificada |
+
+### Notificaciones
+| Método | URL | Descripción |
+|--------|-----|-------------|
+| GET/POST | `/api/v1/notifications/templates/` | Plantillas de notificación |
+| GET | `/api/v1/notifications/my/` | Notificaciones del usuario actual |
+| POST | `/api/v1/notifications/my/{id}/read/` | Marcar como leída |
+
+### Reportes
+| Método | URL | Descripción |
+|--------|-----|-------------|
+| GET/POST | `/api/v1/reports/definitions/` | Definiciones de reportes |
+| POST | `/api/v1/reports/definitions/generate/` | Solicitar generación |
+| GET | `/api/v1/reports/logs/` | Historial de reportes generados |
+
 ## Principios de Diseño
 
 - **UUID v4** como PK en todos los modelos
