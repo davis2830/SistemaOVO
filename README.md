@@ -87,6 +87,64 @@ python manage.py runserver
 | GET/POST | `/api/v1/catalog/price-lists/` | Listas de precios |
 | GET/POST | `/api/v1/catalog/price-list-items/` | Items de lista de precios |
 
+### Inventario
+| Método | URL | Descripción |
+|--------|-----|-------------|
+| GET/POST | `/api/v1/inventory/warehouses/` | Bodegas |
+| GET/POST | `/api/v1/inventory/batches/` | Lotes de inventario |
+| POST | `/api/v1/inventory/batches/adjust/` | Ajuste manual de stock |
+| GET | `/api/v1/inventory/movements/` | Movimientos (solo lectura) |
+
+### Compras
+| Método | URL | Descripción |
+|--------|-----|-------------|
+| GET/POST | `/api/v1/purchases/suppliers/` | Proveedores |
+| GET/POST | `/api/v1/purchases/entries/` | Entradas de compra (genera lotes automáticamente) |
+
+### Clientes
+| Método | URL | Descripción |
+|--------|-----|-------------|
+| GET/POST | `/api/v1/clients/clients/` | Clientes (NIT, datos fiscales) |
+
+### Créditos
+| Método | URL | Descripción |
+|--------|-----|-------------|
+| GET/POST | `/api/v1/credits/accounts/` | Cuentas de crédito |
+| POST | `/api/v1/credits/accounts/payment/` | Registrar pago |
+| GET | `/api/v1/credits/transactions/` | Historial de transacciones |
+
+### Ventas
+| Método | URL | Descripción |
+|--------|-----|-------------|
+| GET/POST | `/api/v1/sales/orders/` | Pedidos de venta |
+| POST | `/api/v1/sales/orders/{id}/transition/` | Cambiar estado (confirm/dispatch/deliver/cancel) |
+
+### Rutas de Entrega
+| Método | URL | Descripción |
+|--------|-----|-------------|
+| GET/POST | `/api/v1/delivery/routes/` | Rutas de entrega |
+
+### Facturación (FEL)
+| Método | URL | Descripción |
+|--------|-----|-------------|
+| GET/POST | `/api/v1/billing/invoices/` | Facturas (crear desde pedido DELIVERED) |
+| POST | `/api/v1/billing/invoices/{id}/certify/` | Certificar vía FEL |
+| POST | `/api/v1/billing/invoices/{id}/cancel/` | Anular factura certificada |
+
+### Notificaciones
+| Método | URL | Descripción |
+|--------|-----|-------------|
+| GET/POST | `/api/v1/notifications/templates/` | Plantillas de notificación |
+| GET | `/api/v1/notifications/my/` | Notificaciones del usuario actual |
+| POST | `/api/v1/notifications/my/{id}/read/` | Marcar como leída |
+
+### Reportes
+| Método | URL | Descripción |
+|--------|-----|-------------|
+| GET/POST | `/api/v1/reports/definitions/` | Definiciones de reportes |
+| POST | `/api/v1/reports/definitions/generate/` | Solicitar generación |
+| GET | `/api/v1/reports/logs/` | Historial de reportes generados |
+
 ## Principios de Diseño
 
 - **UUID v4** como PK en todos los modelos
