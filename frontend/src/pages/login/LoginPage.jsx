@@ -8,7 +8,7 @@ import { useAuth } from '../../context/AuthContext';
 export default function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -18,10 +18,11 @@ export default function LoginPage() {
     setLoading(true);
     setError('');
     try {
-      await login(email, password);
+      await login(username, password);
       navigate('/');
     } catch (err) {
-      setError(err.response?.data?.error?.message || 'Credenciales incorrectas.');
+      const msg = err.response?.data?.error?.message;
+      setError(typeof msg === 'string' ? msg : (msg?.non_field_errors?.[0] || 'Credenciales incorrectas.'));
     } finally {
       setLoading(false);
     }
@@ -41,8 +42,8 @@ export default function LoginPage() {
           {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
           <form onSubmit={handleSubmit}>
             <TextField
-              label="Correo electrónico" type="email" fullWidth
-              value={email} onChange={(e) => setEmail(e.target.value)}
+              label="Usuario" fullWidth
+              value={username} onChange={(e) => setUsername(e.target.value)}
               sx={{ mb: 2 }} required autoFocus
             />
             <TextField
