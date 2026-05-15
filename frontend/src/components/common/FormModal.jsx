@@ -31,15 +31,17 @@ export default function FormModal({
       <DialogTitle>{title}</DialogTitle>
       <DialogContent dividers>{children}</DialogContent>
       <DialogActions sx={{ px: 3, py: 2 }}>
-        <Button onClick={onClose} disabled={loading}>Cancelar</Button>
-        <Button
-          variant="contained"
-          onClick={onSubmit}
-          disabled={loading}
-          startIcon={loading ? <CircularProgress size={18} /> : null}
-        >
-          {submitLabel}
-        </Button>
+        <Button onClick={onClose} disabled={loading}>{submitLabel === '' ? 'Cerrar' : 'Cancelar'}</Button>
+        {submitLabel !== '' && (
+          <Button
+            variant="contained"
+            onClick={onSubmit}
+            disabled={loading}
+            startIcon={loading ? <CircularProgress size={18} /> : null}
+          >
+            {submitLabel}
+          </Button>
+        )}
       </DialogActions>
     </Dialog>
   );

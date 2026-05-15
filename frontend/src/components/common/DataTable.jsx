@@ -2,7 +2,7 @@ import { useState } from 'react';
 import {
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   Paper, TablePagination, IconButton, Tooltip, Box, Typography,
-  CircularProgress,
+  CircularProgress, Button,
 } from '@mui/material';
 import { Edit, Delete, Visibility } from '@mui/icons-material';
 
@@ -16,7 +16,7 @@ import { Edit, Delete, Visibility } from '@mui/icons-material';
  *   onEdit?: (row) => void
  *   onDelete?: (row) => void
  *   onView?: (row) => void
- *   actions?: (row) => ReactNode  — custom actions column
+ *   actions?: (row) => ReactNode | [{ label, onClick, color?, show? }]
  *   emptyMessage?: string
  */
 export default function DataTable({
@@ -34,6 +34,57 @@ export default function DataTable({
 
   const showActions = onEdit || onDelete || onView || actions;
   const paginatedRows = rows.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
+
+  const renderActions = (row) => {
+    if (Array.isArray(actions)) {
+      const visible = actions.filter((a) => !a.show || a.show(row));
+      return (
+        <>
+          {onView && (
+            <Tooltip title="Ver">
+              <IconButton size="small" onClick={() => onView(row)}><Visibility fontSize="small" /></IconButton>
+            </Tooltip>
+          )}
+          {onEdit && (
+            <Tooltip title="Editar">
+              <IconButton size="small" onClick={() => onEdit(row)}><Edit fontSize="small" /></IconButton>
+            </Tooltip>
+          )}
+          {onDelete && (
+            <Tooltip title="Eliminar">
+              <IconButton size="small" color="error" onClick={() => onDelete(row)}><Delete fontSize="small" /></IconButton>
+            </Tooltip>
+          )}
+          {visible.map((a, i) => (
+            <Button key={i} size="small" variant="outlined" color={a.color || 'primary'}
+              onClick={() => a.onClick(row)} sx={{ ml: 0.5, textTransform: 'none', fontSize: '0.75rem' }}>
+              {a.label}
+            </Button>
+          ))}
+        </>
+      );
+    }
+    if (typeof actions === 'function') return actions(row);
+    return (
+      <>
+        {onView && (
+          <Tooltip title="Ver">
+            <IconButton size="small" onClick={() => onView(row)}><Visibility fontSize="small" /></IconButton>
+          </Tooltip>
+        )}
+        {onEdit && (
+          <Tooltip title="Editar">
+            <IconButton size="small" onClick={() => onEdit(row)}><Edit fontSize="small" /></IconButton>
+          </Tooltip>
+        )}
+        {onDelete && (
+          <Tooltip title="Eliminar">
+            <IconButton size="small" color="error" onClick={() => onDelete(row)}><Delete fontSize="small" /></IconButton>
+          </Tooltip>
+        )}
+      </>
+    );
+  };
 
   if (loading) {
     return (
@@ -75,32 +126,8 @@ export default function DataTable({
                     </TableCell>
                   ))}
                   {showActions && (
-                    <TableCell align="right">
-                      {actions ? actions(row) : (
-                        <>
-                          {onView && (
-                            <Tooltip title="Ver">
-                              <IconButton size="small" onClick={() => onView(row)}>
-                                <Visibility fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-                          )}
-                          {onEdit && (
-                            <Tooltip title="Editar">
-                              <IconButton size="small" onClick={() => onEdit(row)}>
-                                <Edit fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-                          )}
-                          {onDelete && (
-                            <Tooltip title="Eliminar">
-                              <IconButton size="small" color="error" onClick={() => onDelete(row)}>
-                                <Delete fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-                          )}
-                        </>
-                      )}
+                    <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
+                      {renderActions(row)}
                     </TableCell>
                   )}
                 </TableRow>
