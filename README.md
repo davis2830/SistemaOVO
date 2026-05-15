@@ -87,6 +87,32 @@ python manage.py runserver
 | GET/POST | `/api/v1/catalog/price-lists/` | Listas de precios |
 | GET/POST | `/api/v1/catalog/price-list-items/` | Items de lista de precios |
 
+### Inventario
+| Método | URL | Descripción |
+|--------|-----|-------------|
+| GET/POST | `/api/v1/inventory/warehouses/` | Bodegas |
+| GET/POST | `/api/v1/inventory/batches/` | Lotes de inventario |
+| POST | `/api/v1/inventory/batches/adjust/` | Ajuste manual de stock |
+| GET | `/api/v1/inventory/movements/` | Movimientos (solo lectura) |
+
+### Compras
+| Método | URL | Descripción |
+|--------|-----|-------------|
+| GET/POST | `/api/v1/purchases/suppliers/` | Proveedores |
+| GET/POST | `/api/v1/purchases/entries/` | Entradas de compra (genera lotes automáticamente) |
+
+### Clientes
+| Método | URL | Descripción |
+|--------|-----|-------------|
+| GET/POST | `/api/v1/clients/clients/` | Clientes (NIT, datos fiscales) |
+
+### Créditos
+| Método | URL | Descripción |
+|--------|-----|-------------|
+| GET/POST | `/api/v1/credits/accounts/` | Cuentas de crédito |
+| POST | `/api/v1/credits/accounts/payment/` | Registrar pago |
+| GET | `/api/v1/credits/transactions/` | Historial de transacciones |
+
 ## Principios de Diseño
 
 - **UUID v4** como PK en todos los modelos
