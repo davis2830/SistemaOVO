@@ -1,0 +1,131 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: sistemaovo
+      POSTGRES_USER: sistemaovo
+      POSTGRES_PASSWORD: sistemaovo
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - sistemaovo
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    networks:
+      - sistemaovo
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    networks:
+      - sistemaovo
+
+  django:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py seed_roles --no-input 2>/dev/null;
+             gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 4 --reload"
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    depends_on:
+      - postgres
+      - redis
+      - rabbitmq
+    networks:
+      - sistemaovo
+
+  celery_default:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: celery -A config worker -l info -Q default,fel,fel_cancel -c 2
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+    depends_on:
+      - django
+      - rabbitmq
+    networks:
+      - sistemaovo
+
+  celery_notifications:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: celery -A config worker -l info -Q notifications -c 3
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+    depends_on:
+      - django
+      - rabbitmq
+    networks:
+      - sistemaovo
+
+  celery_beat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: celery -A config beat -l info
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+    depends_on:
+      - django
+      - rabbitmq
+    networks:
+      - sistemaovo
+
+  flower:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: celery -A config flower --port=5555
+    ports:
+      - "5555:5555"
+    env_file:
+      - .env
+    depends_on:
+      - rabbitmq
+    networks:
+      - sistemaovo
+
+  nginx:
+    image: nginx:1.27-alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - django
+    networks:
+      - sistemaovo
+
+volumes:
+  postgres_data:
+
+networks:
+  sistemaovo:
+    driver: bridge
