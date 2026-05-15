@@ -113,6 +113,17 @@ python manage.py runserver
 | POST | `/api/v1/credits/accounts/payment/` | Registrar pago |
 | GET | `/api/v1/credits/transactions/` | Historial de transacciones |
 
+### Ventas
+| Método | URL | Descripción |
+|--------|-----|-------------|
+| GET/POST | `/api/v1/sales/orders/` | Pedidos de venta |
+| POST | `/api/v1/sales/orders/{id}/transition/` | Cambiar estado (confirm/dispatch/deliver/cancel) |
+
+### Rutas de Entrega
+| Método | URL | Descripción |
+|--------|-----|-------------|
+| GET/POST | `/api/v1/delivery/routes/` | Rutas de entrega |
+
 ## Principios de Diseño
 
 - **UUID v4** como PK en todos los modelos

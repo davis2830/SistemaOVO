@@ -10,4 +10,6 @@ urlpatterns = [
     path("api/v1/purchases/", include("apps.purchases.urls", namespace="purchases")),
     path("api/v1/clients/", include("apps.clients.urls", namespace="clients")),
     path("api/v1/credits/", include("apps.credits.urls", namespace="credits")),
+    path("api/v1/sales/", include("apps.sales.urls", namespace="sales")),
+    path("api/v1/delivery/", include("apps.delivery_routes.urls", namespace="delivery_routes")),
 ]
