@@ -1,5 +1,4 @@
 import { Navigate } from 'react-router-dom';
-import { CircularProgress, Box } from '@mui/material';
 import { useAuth } from '../../context/AuthContext';
 
 export default function ProtectedRoute({ children }) {
@@ -7,9 +6,9 @@ export default function ProtectedRoute({ children }) {
 
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-        <CircularProgress />
-      </Box>
+      <div className="flex items-center justify-center h-screen bg-eggshell">
+        <div className="w-10 h-10 border-4 border-yolk border-t-transparent rounded-full animate-spin" />
+      </div>
     );
   }
 

@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { TextField, Box, MenuItem } from '@mui/material';
 import PageHeader from '../../components/common/PageHeader';
 import SearchBar from '../../components/common/SearchBar';
 import DataTable from '../../components/common/DataTable';
 import FormModal from '../../components/common/FormModal';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
+import { Input, Select } from '../../components/common/FormField';
 import useCrud from '../../hooks/useCrud';
 import { clientsAPI } from '../../api/endpoints';
 
@@ -34,7 +34,11 @@ export default function ClientsPage() {
   );
 
   const openCreate = () => { setEditing(null); setForm(EMPTY_FORM); setModalOpen(true); };
-  const openEdit = (row) => { setEditing(row); setForm({ nit: row.nit, name: row.name, trade_name: row.trade_name || '', address: row.address || '', phone: row.phone || '', email: row.email || '', client_type: row.client_type, classification: row.classification }); setModalOpen(true); };
+  const openEdit = (row) => {
+    setEditing(row);
+    setForm({ nit: row.nit, name: row.name, trade_name: row.trade_name || '', address: row.address || '', phone: row.phone || '', email: row.email || '', client_type: row.client_type, classification: row.classification });
+    setModalOpen(true);
+  };
 
   const handleSubmit = async () => {
     setSaving(true);
@@ -55,23 +59,27 @@ export default function ClientsPage() {
         onEdit={openEdit} onDelete={(r) => setConfirmDelete(r)} />
       <FormModal open={modalOpen} onClose={() => setModalOpen(false)}
         onSubmit={handleSubmit} title={editing ? 'Editar Cliente' : 'Nuevo Cliente'} loading={saving}>
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
-          <TextField label="NIT" value={form.nit} onChange={(e) => setForm({ ...form, nit: e.target.value })} required fullWidth />
-          <TextField label="Nombre / Razón Social" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required fullWidth />
-          <TextField label="Nombre Comercial" value={form.trade_name} onChange={(e) => setForm({ ...form, trade_name: e.target.value })} fullWidth />
-          <TextField label="Dirección" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} fullWidth />
-          <TextField label="Teléfono" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} fullWidth />
-          <TextField label="Email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} fullWidth />
-          <TextField label="Tipo" select value={form.client_type} onChange={(e) => setForm({ ...form, client_type: e.target.value })} fullWidth>
-            <MenuItem value="CONTADO">Contado</MenuItem>
-            <MenuItem value="CREDITO">Crédito</MenuItem>
-          </TextField>
-          <TextField label="Clasificación" select value={form.classification} onChange={(e) => setForm({ ...form, classification: e.target.value })} fullWidth>
-            <MenuItem value="MAYORISTA">Mayorista</MenuItem>
-            <MenuItem value="MINORISTA">Minorista</MenuItem>
-            <MenuItem value="ESPECIAL">Especial</MenuItem>
-          </TextField>
-        </Box>
+        <div className="space-y-4">
+          <Input label="NIT" required value={form.nit} onChange={(e) => setForm({ ...form, nit: e.target.value })} />
+          <Input label="Nombre / Razón Social" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+          <Input label="Nombre Comercial" value={form.trade_name} onChange={(e) => setForm({ ...form, trade_name: e.target.value })} />
+          <Input label="Dirección" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
+          <div className="grid grid-cols-2 gap-4">
+            <Input label="Teléfono" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+            <Input label="Email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <Select label="Tipo" value={form.client_type} onChange={(e) => setForm({ ...form, client_type: e.target.value })}>
+              <option value="CONTADO">Contado</option>
+              <option value="CREDITO">Crédito</option>
+            </Select>
+            <Select label="Clasificación" value={form.classification} onChange={(e) => setForm({ ...form, classification: e.target.value })}>
+              <option value="MAYORISTA">Mayorista</option>
+              <option value="MINORISTA">Minorista</option>
+              <option value="ESPECIAL">Especial</option>
+            </Select>
+          </div>
+        </div>
       </FormModal>
       <ConfirmDialog open={!!confirmDelete} onClose={() => setConfirmDelete(null)}
         onConfirm={async () => { await handleDelete(confirmDelete.id); setConfirmDelete(null); }}

@@ -1,21 +1,19 @@
-import { useState, useEffect } from 'react';
-import { TextField, Box, Tabs, Tab, MenuItem } from '@mui/material';
+import { useState } from 'react';
 import PageHeader from '../../components/common/PageHeader';
 import SearchBar from '../../components/common/SearchBar';
 import DataTable from '../../components/common/DataTable';
 import FormModal from '../../components/common/FormModal';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
+import { Input, Select, Textarea, Tabs } from '../../components/common/FormField';
 import useCrud from '../../hooks/useCrud';
 import { productsAPI, categoriesAPI } from '../../api/endpoints';
 
-// ── Categories tab ──
 const CAT_COLUMNS = [
   { field: 'name', headerName: 'Nombre' },
   { field: 'description', headerName: 'Descripción' },
   { field: 'is_active', headerName: 'Activo', render: (r) => r.is_active ? 'Sí' : 'No' },
 ];
 
-// ── Products tab ──
 const PROD_COLUMNS = [
   { field: 'code', headerName: 'Código', width: 120 },
   { field: 'name', headerName: 'Nombre' },
@@ -32,24 +30,18 @@ const EMPTY_PROD = { code: '', name: '', category: '', units_per_carton: 30, car
 export default function CatalogPage() {
   const [tab, setTab] = useState(0);
   const [search, setSearch] = useState('');
-
-  // Categories
   const categories = useCrud(categoriesAPI);
+  const products = useCrud(productsAPI);
   const [catModal, setCatModal] = useState(false);
   const [catEditing, setCatEditing] = useState(null);
   const [catForm, setCatForm] = useState(EMPTY_CAT);
   const [catDelete, setCatDelete] = useState(null);
-
-  // Products
-  const products = useCrud(productsAPI);
   const [prodModal, setProdModal] = useState(false);
   const [prodEditing, setProdEditing] = useState(null);
   const [prodForm, setProdForm] = useState(EMPTY_PROD);
   const [prodDelete, setProdDelete] = useState(null);
-
   const [saving, setSaving] = useState(false);
 
-  // ── Category handlers ──
   const openCatCreate = () => { setCatEditing(null); setCatForm(EMPTY_CAT); setCatModal(true); };
   const openCatEdit = (r) => { setCatEditing(r); setCatForm({ name: r.name, description: r.description || '' }); setCatModal(true); };
   const submitCat = async () => {
@@ -62,7 +54,6 @@ export default function CatalogPage() {
     setSaving(false);
   };
 
-  // ── Product handlers ──
   const openProdCreate = () => { setProdEditing(null); setProdForm(EMPTY_PROD); setProdModal(true); };
   const openProdEdit = (r) => {
     setProdEditing(r);
@@ -95,24 +86,18 @@ export default function CatalogPage() {
         <SearchBar value={search} onChange={setSearch} />
       </PageHeader>
 
-      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
-        <Tabs value={tab} onChange={(_, v) => setTab(v)}>
-          <Tab label="Categorías" />
-          <Tab label="Productos" />
-        </Tabs>
-      </Box>
+      <Tabs tabs={['Categorías', 'Productos']} active={tab} onChange={setTab} />
 
-      {/* ── Categories ── */}
       {tab === 0 && (
         <>
           <DataTable columns={CAT_COLUMNS} rows={filter(categories.rows)} loading={categories.loading}
             onEdit={openCatEdit} onDelete={(r) => setCatDelete(r)} />
           <FormModal open={catModal} onClose={() => setCatModal(false)} onSubmit={submitCat}
             title={catEditing ? 'Editar Categoría' : 'Nueva Categoría'} loading={saving}>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
-              <TextField label="Nombre" value={catForm.name} onChange={(e) => setCatForm({ ...catForm, name: e.target.value })} required fullWidth />
-              <TextField label="Descripción" value={catForm.description} onChange={(e) => setCatForm({ ...catForm, description: e.target.value })} fullWidth multiline rows={2} />
-            </Box>
+            <div className="space-y-4">
+              <Input label="Nombre" required value={catForm.name} onChange={(e) => setCatForm({ ...catForm, name: e.target.value })} />
+              <Textarea label="Descripción" value={catForm.description} onChange={(e) => setCatForm({ ...catForm, description: e.target.value })} />
+            </div>
           </FormModal>
           <ConfirmDialog open={!!catDelete} onClose={() => setCatDelete(null)}
             onConfirm={async () => { await categories.handleDelete(catDelete.id); setCatDelete(null); }}
@@ -120,25 +105,26 @@ export default function CatalogPage() {
         </>
       )}
 
-      {/* ── Products ── */}
       {tab === 1 && (
         <>
           <DataTable columns={PROD_COLUMNS} rows={filter(products.rows)} loading={products.loading}
             onEdit={openProdEdit} onDelete={(r) => setProdDelete(r)} />
           <FormModal open={prodModal} onClose={() => setProdModal(false)} onSubmit={submitProd}
             title={prodEditing ? 'Editar Producto' : 'Nuevo Producto'} loading={saving}>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
-              <TextField label="Código" value={prodForm.code} onChange={(e) => setProdForm({ ...prodForm, code: e.target.value })} required fullWidth />
-              <TextField label="Nombre" value={prodForm.name} onChange={(e) => setProdForm({ ...prodForm, name: e.target.value })} required fullWidth />
-              <TextField label="Categoría" select value={prodForm.category} onChange={(e) => setProdForm({ ...prodForm, category: e.target.value })} fullWidth>
-                <MenuItem value="">Sin categoría</MenuItem>
-                {categories.rows.map((c) => <MenuItem key={c.id} value={c.id}>{c.name}</MenuItem>)}
-              </TextField>
-              <TextField label="Unidades por Cartón" type="number" value={prodForm.units_per_carton}
-                onChange={(e) => setProdForm({ ...prodForm, units_per_carton: parseInt(e.target.value) || 0 })} fullWidth />
-              <TextField label="Cartones por Caja" type="number" value={prodForm.cartons_per_box}
-                onChange={(e) => setProdForm({ ...prodForm, cartons_per_box: parseInt(e.target.value) || 0 })} fullWidth />
-            </Box>
+            <div className="space-y-4">
+              <Input label="Código" required value={prodForm.code} onChange={(e) => setProdForm({ ...prodForm, code: e.target.value })} />
+              <Input label="Nombre" required value={prodForm.name} onChange={(e) => setProdForm({ ...prodForm, name: e.target.value })} />
+              <Select label="Categoría" value={prodForm.category} onChange={(e) => setProdForm({ ...prodForm, category: e.target.value })}>
+                <option value="">— Sin categoría —</option>
+                {categories.rows.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </Select>
+              <div className="grid grid-cols-2 gap-4">
+                <Input label="Und/Cartón" type="number" value={prodForm.units_per_carton}
+                  onChange={(e) => setProdForm({ ...prodForm, units_per_carton: parseInt(e.target.value) || 0 })} />
+                <Input label="Cart/Caja" type="number" value={prodForm.cartons_per_box}
+                  onChange={(e) => setProdForm({ ...prodForm, cartons_per_box: parseInt(e.target.value) || 0 })} />
+              </div>
+            </div>
           </FormModal>
           <ConfirmDialog open={!!prodDelete} onClose={() => setProdDelete(null)}
             onConfirm={async () => { await products.handleDelete(prodDelete.id); setProdDelete(null); }}

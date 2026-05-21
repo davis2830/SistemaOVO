@@ -1,11 +1,10 @@
 import { useState } from 'react';
-import { Tabs, Tab, Box, TextField, Button } from '@mui/material';
-import { Add } from '@mui/icons-material';
 import PageHeader from '../../components/common/PageHeader';
 import SearchBar from '../../components/common/SearchBar';
 import DataTable from '../../components/common/DataTable';
 import FormModal from '../../components/common/FormModal';
 import StatusBadge from '../../components/common/StatusBadge';
+import { Input, Tabs } from '../../components/common/FormField';
 import useCrud from '../../hooks/useCrud';
 import { warehousesAPI, batchesAPI, movementsAPI } from '../../api/endpoints';
 
@@ -59,28 +58,22 @@ export default function InventoryPage() {
     setSaving(false);
   };
 
+  const handleTabChange = (i) => {
+    setTab(i);
+    if (i === 2) movements.refresh();
+  };
+
   const filter = (rows) => rows.filter((r) =>
     JSON.stringify(r).toLowerCase().includes(search.toLowerCase())
   );
 
   return (
     <>
-      <PageHeader title="Inventario">
+      <PageHeader title="Inventario" onAdd={tab === 0 ? openWhCreate : undefined} addLabel="Nueva Bodega">
         <SearchBar value={search} onChange={setSearch} />
-        {tab === 0 && (
-          <Button variant="contained" startIcon={<Add />} onClick={openWhCreate}>
-            Nueva Bodega
-          </Button>
-        )}
       </PageHeader>
 
-      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
-        <Tabs value={tab} onChange={(_, v) => { setTab(v); if (v === 2) movements.refresh(); }}>
-          <Tab label="Bodegas" />
-          <Tab label="Lotes" />
-          <Tab label="Movimientos" />
-        </Tabs>
-      </Box>
+      <Tabs tabs={['Bodegas', 'Lotes', 'Movimientos']} active={tab} onChange={handleTabChange} />
 
       {tab === 0 && (
         <>
@@ -88,10 +81,10 @@ export default function InventoryPage() {
             onEdit={openWhEdit} />
           <FormModal open={whModal} onClose={() => setWhModal(false)} onSubmit={handleWhSubmit}
             title={whEditing ? 'Editar Bodega' : 'Nueva Bodega'} loading={saving}>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
-              <TextField label="Nombre" value={whForm.name} onChange={(e) => setWhForm({ ...whForm, name: e.target.value })} fullWidth required />
-              <TextField label="Dirección" value={whForm.address} onChange={(e) => setWhForm({ ...whForm, address: e.target.value })} fullWidth />
-            </Box>
+            <div className="space-y-4">
+              <Input label="Nombre" required value={whForm.name} onChange={(e) => setWhForm({ ...whForm, name: e.target.value })} />
+              <Input label="Dirección" value={whForm.address} onChange={(e) => setWhForm({ ...whForm, address: e.target.value })} />
+            </div>
           </FormModal>
         </>
       )}
