@@ -1,14 +1,10 @@
 import { useState } from 'react';
-import {
-  Box, TextField, MenuItem, Button, IconButton, Typography, Alert,
-  Table, TableBody, TableCell, TableHead, TableRow, Paper, Chip,
-} from '@mui/material';
-import { Add, Delete } from '@mui/icons-material';
 import PageHeader from '../../components/common/PageHeader';
 import SearchBar from '../../components/common/SearchBar';
 import DataTable from '../../components/common/DataTable';
 import FormModal from '../../components/common/FormModal';
 import StatusBadge from '../../components/common/StatusBadge';
+import { Input, Select, Alert } from '../../components/common/FormField';
 import useCrud from '../../hooks/useCrud';
 import { salesOrdersAPI, clientsAPI, warehousesAPI, productsAPI, deliveryRoutesAPI } from '../../api/endpoints';
 
@@ -49,7 +45,6 @@ export default function SalesPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
-  // Detail view
   const [detailModal, setDetailModal] = useState(false);
   const [detailOrder, setDetailOrder] = useState(null);
 
@@ -74,7 +69,17 @@ export default function SalesPage() {
   };
 
   const submitOrder = async () => {
-    setSaving(true); setError('');
+    setError('');
+    if (!orderForm.client || !orderForm.warehouse || !orderForm.order_date) {
+      setError('Seleccione cliente, bodega y fecha.');
+      return;
+    }
+    const validItems = orderItems.filter((it) => it.product && it.display_qty && it.unit_price);
+    if (validItems.length === 0) {
+      setError('Agregue al menos una línea con producto, cantidad y precio.');
+      return;
+    }
+    setSaving(true);
     try {
       const payload = {
         client: orderForm.client,
@@ -84,8 +89,8 @@ export default function SalesPage() {
         order_date: orderForm.order_date,
         delivery_date: orderForm.delivery_date || null,
         discount: parseFloat(orderForm.discount) || 0,
-        notes: orderForm.notes,
-        items: orderItems.map((it) => ({
+        notes: orderForm.notes || '',
+        items: validItems.map((it) => ({
           product: it.product,
           display_unit: it.display_unit,
           display_qty: parseFloat(it.display_qty),
@@ -97,8 +102,8 @@ export default function SalesPage() {
       orders.refresh();
       setOrderModal(false);
     } catch (err) {
-      const msg = err.response?.data?.error?.message;
-      setError(typeof msg === 'string' ? msg : JSON.stringify(msg) || 'Error al crear pedido');
+      const msg = err.response?.data?.error?.message || err.response?.data?.detail || 'Error al crear pedido';
+      setError(typeof msg === 'string' ? msg : JSON.stringify(msg));
     }
     setSaving(false);
   };
@@ -118,6 +123,15 @@ export default function SalesPage() {
     JSON.stringify(r).toLowerCase().includes(search.toLowerCase())
   );
 
+  const orderActions = Object.entries(TRANSITIONS).flatMap(([status, acts]) =>
+    acts.map((a) => ({
+      label: a.label,
+      color: a.color === 'primary' ? undefined : a.color,
+      show: (row) => row.status === status,
+      onClick: (row) => doTransition(row, a.action),
+    }))
+  );
+
   return (
     <>
       <PageHeader title="Ventas" onAdd={openCreate} addLabel="Nuevo Pedido">
@@ -125,161 +139,148 @@ export default function SalesPage() {
       </PageHeader>
 
       <DataTable columns={COLUMNS} rows={filter(orders.rows)} loading={orders.loading}
-        onView={viewOrder}
-        actions={Object.entries(TRANSITIONS).flatMap(([status, actions]) =>
-          actions.map((a) => ({
-            label: a.label, color: a.color,
-            onClick: (r) => doTransition(r, a.action),
-            show: (r) => r.status === status,
-          }))
-        )}
-      />
+        onView={viewOrder} actions={orderActions} />
 
-      {/* ── Create order modal ── */}
       <FormModal open={orderModal} onClose={() => setOrderModal(false)} onSubmit={submitOrder}
-        title="Nuevo Pedido de Venta" loading={saving} maxWidth="md">
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
-          {error && <Alert severity="error">{error}</Alert>}
-          <Box sx={{ display: 'flex', gap: 2 }}>
-            <TextField label="Cliente *" select value={orderForm.client}
-              onChange={(e) => setOrderForm({ ...orderForm, client: e.target.value })} fullWidth>
-              {clients.rows.map((c) => <MenuItem key={c.id} value={c.id}>{c.nit} — {c.name}</MenuItem>)}
-            </TextField>
-            <TextField label="Bodega *" select value={orderForm.warehouse}
-              onChange={(e) => setOrderForm({ ...orderForm, warehouse: e.target.value })} fullWidth>
-              {warehouses.rows.map((w) => <MenuItem key={w.id} value={w.id}>{w.name}</MenuItem>)}
-            </TextField>
-          </Box>
-          <Box sx={{ display: 'flex', gap: 2 }}>
-            <TextField label="Tipo de Pago" select value={orderForm.payment_type}
-              onChange={(e) => setOrderForm({ ...orderForm, payment_type: e.target.value })} fullWidth>
-              {PAYMENT_TYPES.map((t) => <MenuItem key={t} value={t}>{t}</MenuItem>)}
-            </TextField>
-            <TextField label="Ruta de Entrega" select value={orderForm.delivery_route}
-              onChange={(e) => setOrderForm({ ...orderForm, delivery_route: e.target.value })} fullWidth>
-              <MenuItem value="">Sin ruta</MenuItem>
-              {routes.rows.map((r) => <MenuItem key={r.id} value={r.id}>{r.name}</MenuItem>)}
-            </TextField>
-          </Box>
-          <Box sx={{ display: 'flex', gap: 2 }}>
-            <TextField label="Fecha Pedido *" type="date" value={orderForm.order_date}
-              onChange={(e) => setOrderForm({ ...orderForm, order_date: e.target.value })}
-              InputLabelProps={{ shrink: true }} fullWidth />
-            <TextField label="Fecha Entrega" type="date" value={orderForm.delivery_date}
-              onChange={(e) => setOrderForm({ ...orderForm, delivery_date: e.target.value })}
-              InputLabelProps={{ shrink: true }} fullWidth />
-            <TextField label="Descuento (Q)" type="number" value={orderForm.discount}
-              onChange={(e) => setOrderForm({ ...orderForm, discount: e.target.value })} fullWidth />
-          </Box>
-          <TextField label="Notas" value={orderForm.notes}
-            onChange={(e) => setOrderForm({ ...orderForm, notes: e.target.value })} fullWidth />
+        title="Nuevo Pedido de Venta" loading={saving} maxWidth="lg">
+        <div className="space-y-4">
+          {error && <Alert>{error}</Alert>}
+          <div className="grid grid-cols-2 gap-4">
+            <Select label="Cliente" required value={orderForm.client}
+              onChange={(e) => setOrderForm({ ...orderForm, client: e.target.value })}>
+              <option value="">— Seleccionar —</option>
+              {clients.rows.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </Select>
+            <Select label="Bodega" required value={orderForm.warehouse}
+              onChange={(e) => setOrderForm({ ...orderForm, warehouse: e.target.value })}>
+              <option value="">— Seleccionar —</option>
+              {warehouses.rows.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
+            </Select>
+          </div>
+          <div className="grid grid-cols-3 gap-4">
+            <Select label="Tipo de Pago" value={orderForm.payment_type}
+              onChange={(e) => setOrderForm({ ...orderForm, payment_type: e.target.value })}>
+              {PAYMENT_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+            </Select>
+            <Input label="Fecha" required type="date" value={orderForm.order_date}
+              onChange={(e) => setOrderForm({ ...orderForm, order_date: e.target.value })} />
+            <Input label="Fecha Entrega" type="date" value={orderForm.delivery_date}
+              onChange={(e) => setOrderForm({ ...orderForm, delivery_date: e.target.value })} />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <Select label="Ruta de Entrega" value={orderForm.delivery_route}
+              onChange={(e) => setOrderForm({ ...orderForm, delivery_route: e.target.value })}>
+              <option value="">— Sin ruta —</option>
+              {routes.rows.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+            </Select>
+            <Input label="Descuento General" type="number" value={orderForm.discount}
+              onChange={(e) => setOrderForm({ ...orderForm, discount: e.target.value })} min="0" step="0.01" />
+          </div>
+          <Input label="Notas" value={orderForm.notes}
+            onChange={(e) => setOrderForm({ ...orderForm, notes: e.target.value })} />
 
-          <Typography variant="subtitle1" sx={{ mt: 1 }}>Líneas del Pedido</Typography>
-          <Paper variant="outlined" sx={{ overflow: 'auto' }}>
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell>Producto</TableCell>
-                  <TableCell>Unidad</TableCell>
-                  <TableCell>Cantidad</TableCell>
-                  <TableCell>Precio Unitario</TableCell>
-                  <TableCell>Desc %</TableCell>
-                  <TableCell width={50}></TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
+          <div className="flex items-center justify-between">
+            <h4 className="font-semibold text-charcoal">Líneas del Pedido</h4>
+            <button onClick={addItem} className="text-xs font-semibold text-yolk hover:text-accent flex items-center gap-1">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Agregar línea
+            </button>
+          </div>
+
+          <div className="border border-gray-200 rounded-xl overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-eggshell">
+                  <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500">Producto</th>
+                  <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500">Unidad</th>
+                  <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500">Cantidad</th>
+                  <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500">Precio Unit.</th>
+                  <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500">Desc %</th>
+                  <th className="w-10"></th>
+                </tr>
+              </thead>
+              <tbody>
                 {orderItems.map((item, i) => (
-                  <TableRow key={i}>
-                    <TableCell>
-                      <TextField select size="small" fullWidth value={item.product}
-                        onChange={(e) => updateItem(i, 'product', e.target.value)}>
-                        {products.rows.map((p) => <MenuItem key={p.id} value={p.id}>{p.code} — {p.name}</MenuItem>)}
-                      </TextField>
-                    </TableCell>
-                    <TableCell>
-                      <TextField select size="small" value={item.display_unit}
-                        onChange={(e) => updateItem(i, 'display_unit', e.target.value)}>
-                        {UNITS.map((u) => <MenuItem key={u} value={u}>{u}</MenuItem>)}
-                      </TextField>
-                    </TableCell>
-                    <TableCell>
-                      <TextField size="small" type="number" value={item.display_qty}
-                        onChange={(e) => updateItem(i, 'display_qty', e.target.value)} />
-                    </TableCell>
-                    <TableCell>
-                      <TextField size="small" type="number" value={item.unit_price}
-                        onChange={(e) => updateItem(i, 'unit_price', e.target.value)} />
-                    </TableCell>
-                    <TableCell>
-                      <TextField size="small" type="number" value={item.discount_pct}
-                        onChange={(e) => updateItem(i, 'discount_pct', e.target.value)} />
-                    </TableCell>
-                    <TableCell>
+                  <tr key={i} className="border-t border-gray-100">
+                    <td className="px-3 py-2">
+                      <select className="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-yolk"
+                        value={item.product} onChange={(e) => updateItem(i, 'product', e.target.value)}>
+                        <option value="">— Producto —</option>
+                        {products.rows.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                      </select>
+                    </td>
+                    <td className="px-3 py-2">
+                      <select className="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-yolk"
+                        value={item.display_unit} onChange={(e) => updateItem(i, 'display_unit', e.target.value)}>
+                        {UNITS.map((u) => <option key={u} value={u}>{u}</option>)}
+                      </select>
+                    </td>
+                    <td className="px-3 py-2">
+                      <input type="number" min="1" className="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-yolk"
+                        value={item.display_qty} onChange={(e) => updateItem(i, 'display_qty', e.target.value)} placeholder="0" />
+                    </td>
+                    <td className="px-3 py-2">
+                      <input type="number" step="0.01" min="0" className="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-yolk"
+                        value={item.unit_price} onChange={(e) => updateItem(i, 'unit_price', e.target.value)} placeholder="0.00" />
+                    </td>
+                    <td className="px-3 py-2">
+                      <input type="number" min="0" max="100" className="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-yolk"
+                        value={item.discount_pct} onChange={(e) => updateItem(i, 'discount_pct', e.target.value)} placeholder="0" />
+                    </td>
+                    <td className="px-3 py-2">
                       {orderItems.length > 1 && (
-                        <IconButton size="small" onClick={() => removeItem(i)}><Delete fontSize="small" /></IconButton>
+                        <button onClick={() => removeItem(i)} className="text-red-400 hover:text-red-600 p-1">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
                       )}
-                    </TableCell>
-                  </TableRow>
+                    </td>
+                  </tr>
                 ))}
-              </TableBody>
-            </Table>
-          </Paper>
-          <Button size="small" startIcon={<Add />} onClick={addItem}>Agregar Línea</Button>
-        </Box>
+              </tbody>
+            </table>
+          </div>
+        </div>
       </FormModal>
 
-      {/* ── Detail modal ── */}
       <FormModal open={detailModal} onClose={() => setDetailModal(false)}
-        title={`Pedido ${detailOrder?.order_number || ''}`} submitLabel=""
-        onSubmit={() => setDetailModal(false)} maxWidth="md">
+        title={`Pedido ${detailOrder?.order_number || ''}`} submitLabel="" maxWidth="md">
         {detailOrder && (
-          <Box sx={{ mt: 1 }}>
-            <Box sx={{ display: 'flex', gap: 4, mb: 2 }}>
-              <Box>
-                <Typography variant="body2"><strong>Cliente:</strong> {detailOrder.client_name}</Typography>
-                <Typography variant="body2"><strong>NIT:</strong> {detailOrder.client_nit}</Typography>
-                <Typography variant="body2"><strong>Bodega:</strong> {detailOrder.warehouse_name}</Typography>
-              </Box>
-              <Box>
-                <Typography variant="body2"><strong>Tipo Pago:</strong> {detailOrder.payment_type}</Typography>
-                <Typography variant="body2"><strong>Fecha:</strong> {detailOrder.order_date}</Typography>
-                <Typography variant="body2"><strong>Estado:</strong> <StatusBadge status={detailOrder.status} /></Typography>
-              </Box>
-              <Box>
-                <Typography variant="body2"><strong>Subtotal:</strong> Q {Number(detailOrder.subtotal).toFixed(2)}</Typography>
-                <Typography variant="body2"><strong>Descuento:</strong> Q {Number(detailOrder.discount).toFixed(2)}</Typography>
-                <Typography variant="body2"><strong>Total:</strong> Q {Number(detailOrder.total).toFixed(2)}</Typography>
-              </Box>
-            </Box>
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-4">
+              <div><span className="text-xs text-gray-400">Cliente</span><p className="font-semibold">{detailOrder.client_name}</p></div>
+              <div><span className="text-xs text-gray-400">Bodega</span><p className="font-semibold">{detailOrder.warehouse_name}</p></div>
+              <div><span className="text-xs text-gray-400">Fecha</span><p className="font-semibold">{detailOrder.order_date}</p></div>
+              <div><span className="text-xs text-gray-400">Total</span><p className="font-semibold">Q {Number(detailOrder.total).toFixed(2)}</p></div>
+              <div><span className="text-xs text-gray-400">Estado</span><p><StatusBadge status={detailOrder.status} /></p></div>
+              <div><span className="text-xs text-gray-400">Tipo Pago</span><p className="font-semibold">{detailOrder.payment_type}</p></div>
+            </div>
             {detailOrder.items?.length > 0 && (
-              <Paper variant="outlined">
-                <Table size="small">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Producto</TableCell>
-                      <TableCell>Unidad</TableCell>
-                      <TableCell>Cantidad</TableCell>
-                      <TableCell>Precio Unitario</TableCell>
-                      <TableCell>Desc %</TableCell>
-                      <TableCell>Subtotal</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {detailOrder.items.map((it) => (
-                      <TableRow key={it.id}>
-                        <TableCell>{it.product_name || it.product_code}</TableCell>
-                        <TableCell>{it.display_unit}</TableCell>
-                        <TableCell>{it.display_qty}</TableCell>
-                        <TableCell>Q {Number(it.unit_price).toFixed(4)}</TableCell>
-                        <TableCell>{it.discount_pct}%</TableCell>
-                        <TableCell>Q {Number(it.subtotal).toFixed(2)}</TableCell>
-                      </TableRow>
+              <div className="border border-gray-200 rounded-xl overflow-hidden mt-4">
+                <table className="w-full text-sm">
+                  <thead><tr className="bg-eggshell">
+                    <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500">Producto</th>
+                    <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500">Cantidad</th>
+                    <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500">Precio Unit.</th>
+                    <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500">Subtotal</th>
+                  </tr></thead>
+                  <tbody>
+                    {detailOrder.items.map((it, i) => (
+                      <tr key={i} className="border-t border-gray-100">
+                        <td className="px-3 py-2">{it.product_name || it.product}</td>
+                        <td className="px-3 py-2">{it.display_qty} {it.display_unit}</td>
+                        <td className="px-3 py-2">Q {Number(it.unit_price).toFixed(2)}</td>
+                        <td className="px-3 py-2">Q {Number(it.line_total).toFixed(2)}</td>
+                      </tr>
                     ))}
-                  </TableBody>
-                </Table>
-              </Paper>
+                  </tbody>
+                </table>
+              </div>
             )}
-          </Box>
+          </div>
         )}
       </FormModal>
     </>

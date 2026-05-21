@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { Tabs, Tab, Box, TextField, MenuItem, Alert } from '@mui/material';
 import PageHeader from '../../components/common/PageHeader';
 import SearchBar from '../../components/common/SearchBar';
 import DataTable from '../../components/common/DataTable';
 import FormModal from '../../components/common/FormModal';
 import StatusBadge from '../../components/common/StatusBadge';
+import { Input, Select, Tabs, Alert } from '../../components/common/FormField';
 import useCrud from '../../hooks/useCrud';
 import { creditAccountsAPI, creditTransactionsAPI, clientsAPI } from '../../api/endpoints';
 
@@ -53,7 +53,8 @@ export default function CreditsPage() {
       await accounts.handleCreate({ client: accForm.client, credit_limit: parseFloat(accForm.credit_limit) });
       setAccModal(false);
     } catch (err) {
-      setError(err.response?.data?.error?.message || 'Error al crear cuenta');
+      const msg = err.response?.data?.error?.message || err.response?.data?.detail || 'Error al crear cuenta';
+      setError(typeof msg === 'string' ? msg : JSON.stringify(msg));
     }
     setSaving(false);
   };
@@ -76,9 +77,15 @@ export default function CreditsPage() {
       accounts.refresh();
       setPayModal(false);
     } catch (err) {
-      setError(err.response?.data?.error?.message || 'Error al registrar pago');
+      const msg = err.response?.data?.error?.message || err.response?.data?.detail || 'Error al registrar pago';
+      setError(typeof msg === 'string' ? msg : JSON.stringify(msg));
     }
     setSaving(false);
+  };
+
+  const handleTabChange = (i) => {
+    setTab(i);
+    if (i === 1) transactions.refresh();
   };
 
   const filter = (rows) => rows.filter((r) =>
@@ -95,12 +102,7 @@ export default function CreditsPage() {
         <SearchBar value={search} onChange={setSearch} />
       </PageHeader>
 
-      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
-        <Tabs value={tab} onChange={(_, v) => { setTab(v); if (v === 1) transactions.refresh(); }}>
-          <Tab label="Cuentas" />
-          <Tab label="Transacciones" />
-        </Tabs>
-      </Box>
+      <Tabs tabs={['Cuentas', 'Transacciones']} active={tab} onChange={handleTabChange} />
 
       {tab === 0 && (
         <>
@@ -108,37 +110,40 @@ export default function CreditsPage() {
             actions={[{ label: 'Registrar Pago', onClick: openPayment, color: 'success' }]} />
           <FormModal open={accModal} onClose={() => setAccModal(false)} onSubmit={submitAccount}
             title="Nueva Cuenta de Crédito" loading={saving}>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
-              {error && <Alert severity="error">{typeof error === 'string' ? error : 'Error'}</Alert>}
-              <TextField label="Cliente *" select value={accForm.client}
-                onChange={(e) => setAccForm({ ...accForm, client: e.target.value })} fullWidth>
-                {clients.rows.map((c) => <MenuItem key={c.id} value={c.id}>{c.nit} — {c.name}</MenuItem>)}
-              </TextField>
-              <TextField label="Límite de Crédito (Q) *" type="number" value={accForm.credit_limit}
-                onChange={(e) => setAccForm({ ...accForm, credit_limit: e.target.value })} fullWidth />
-            </Box>
+            <div className="space-y-4">
+              {error && <Alert>{error}</Alert>}
+              <Select label="Cliente" required value={accForm.client}
+                onChange={(e) => setAccForm({ ...accForm, client: e.target.value })}>
+                <option value="">— Seleccionar —</option>
+                {clients.rows.map((c) => <option key={c.id} value={c.id}>{c.name} ({c.nit})</option>)}
+              </Select>
+              <Input label="Límite de Crédito (Q)" required type="number" step="0.01" min="0"
+                value={accForm.credit_limit} onChange={(e) => setAccForm({ ...accForm, credit_limit: e.target.value })} />
+            </div>
           </FormModal>
 
           <FormModal open={payModal} onClose={() => setPayModal(false)} onSubmit={submitPayment}
-            title="Registrar Pago" loading={saving} submitLabel="Registrar">
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
-              {error && <Alert severity="error">{typeof error === 'string' ? error : 'Error'}</Alert>}
-              <TextField label="Monto (Q) *" type="number" value={payForm.amount}
-                onChange={(e) => setPayForm({ ...payForm, amount: e.target.value })} fullWidth />
-              <TextField label="Método de Pago" select value={payForm.payment_method}
-                onChange={(e) => setPayForm({ ...payForm, payment_method: e.target.value })} fullWidth>
-                {PAYMENT_METHODS.map((m) => <MenuItem key={m} value={m}>{m}</MenuItem>)}
-              </TextField>
-              <TextField label="Referencia" value={payForm.reference_number}
-                onChange={(e) => setPayForm({ ...payForm, reference_number: e.target.value })} fullWidth />
-              <TextField label="Notas" value={payForm.notes}
-                onChange={(e) => setPayForm({ ...payForm, notes: e.target.value })} fullWidth multiline rows={2} />
-            </Box>
+            title="Registrar Pago" loading={saving}>
+            <div className="space-y-4">
+              {error && <Alert>{error}</Alert>}
+              <Input label="Monto (Q)" required type="number" step="0.01" min="0"
+                value={payForm.amount} onChange={(e) => setPayForm({ ...payForm, amount: e.target.value })} />
+              <Select label="Método de Pago" value={payForm.payment_method}
+                onChange={(e) => setPayForm({ ...payForm, payment_method: e.target.value })}>
+                {PAYMENT_METHODS.map((m) => <option key={m} value={m}>{m}</option>)}
+              </Select>
+              <Input label="Número de Referencia" value={payForm.reference_number}
+                onChange={(e) => setPayForm({ ...payForm, reference_number: e.target.value })} />
+              <Input label="Notas" value={payForm.notes}
+                onChange={(e) => setPayForm({ ...payForm, notes: e.target.value })} />
+            </div>
           </FormModal>
         </>
       )}
 
-      {tab === 1 && <DataTable columns={TX_COLUMNS} rows={filter(transactions.rows)} loading={transactions.loading} />}
+      {tab === 1 && (
+        <DataTable columns={TX_COLUMNS} rows={filter(transactions.rows)} loading={transactions.loading} />
+      )}
     </>
   );
 }

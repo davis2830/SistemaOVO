@@ -1,13 +1,10 @@
 import { useState } from 'react';
-import {
-  Box, TextField, MenuItem, Typography, Alert,
-  Table, TableBody, TableCell, TableHead, TableRow, Paper,
-} from '@mui/material';
 import PageHeader from '../../components/common/PageHeader';
 import SearchBar from '../../components/common/SearchBar';
 import DataTable from '../../components/common/DataTable';
 import FormModal from '../../components/common/FormModal';
 import StatusBadge from '../../components/common/StatusBadge';
+import { Input, Select, Textarea, Alert } from '../../components/common/FormField';
 import useCrud from '../../hooks/useCrud';
 import { invoicesAPI, salesOrdersAPI } from '../../api/endpoints';
 
@@ -27,16 +24,13 @@ export default function BillingPage() {
   const invoices = useCrud(invoicesAPI);
   const orders = useCrud(salesOrdersAPI);
 
-  // Create invoice from order
   const [createModal, setCreateModal] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState('');
 
-  // Cancel invoice
   const [cancelModal, setCancelModal] = useState(false);
   const [cancelInvoice, setCancelInvoice] = useState(null);
   const [cancelReason, setCancelReason] = useState('');
 
-  // Detail view
   const [detailModal, setDetailModal] = useState(false);
   const [detailInvoice, setDetailInvoice] = useState(null);
 
@@ -47,6 +41,7 @@ export default function BillingPage() {
 
   const openCreate = () => { setSelectedOrder(''); setError(''); setCreateModal(true); };
   const submitCreate = async () => {
+    if (!selectedOrder) { setError('Seleccione un pedido entregado.'); return; }
     setSaving(true); setError('');
     try {
       await invoicesAPI.create({ sales_order: selectedOrder });
@@ -54,8 +49,8 @@ export default function BillingPage() {
       orders.refresh();
       setCreateModal(false);
     } catch (err) {
-      const msg = err.response?.data?.error?.message;
-      setError(typeof msg === 'string' ? msg : JSON.stringify(msg) || 'Error al crear factura');
+      const msg = err.response?.data?.error?.message || err.response?.data?.detail || 'Error al crear factura';
+      setError(typeof msg === 'string' ? msg : JSON.stringify(msg));
     }
     setSaving(false);
   };
@@ -71,14 +66,15 @@ export default function BillingPage() {
 
   const openCancel = (inv) => { setCancelInvoice(inv); setCancelReason(''); setError(''); setCancelModal(true); };
   const submitCancel = async () => {
+    if (!cancelReason.trim()) { setError('Ingrese el motivo de anulación.'); return; }
     setSaving(true); setError('');
     try {
       await invoicesAPI.cancel(cancelInvoice.id, { reason: cancelReason });
       invoices.refresh();
       setCancelModal(false);
     } catch (err) {
-      const msg = err.response?.data?.error?.message;
-      setError(typeof msg === 'string' ? msg : JSON.stringify(msg) || 'Error al anular');
+      const msg = err.response?.data?.error?.message || err.response?.data?.detail || 'Error al anular';
+      setError(typeof msg === 'string' ? msg : JSON.stringify(msg));
     }
     setSaving(false);
   };
@@ -98,101 +94,75 @@ export default function BillingPage() {
       <DataTable columns={COLUMNS} rows={filter(invoices.rows)} loading={invoices.loading}
         onView={viewInvoice}
         actions={[
-          { label: 'Certificar FEL', color: 'primary', onClick: doCertify, show: (r) => r.status === 'DRAFT' },
+          { label: 'Certificar FEL', onClick: doCertify, show: (r) => r.status === 'DRAFT' },
           { label: 'Anular', color: 'error', onClick: openCancel, show: (r) => r.status === 'CERTIFIED' },
         ]}
       />
 
-      {/* ── Create invoice from order ── */}
       <FormModal open={createModal} onClose={() => setCreateModal(false)} onSubmit={submitCreate}
         title="Crear Factura desde Pedido" loading={saving}>
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
-          {error && <Alert severity="error">{error}</Alert>}
+        <div className="space-y-4">
+          {error && <Alert>{error}</Alert>}
           {deliveredOrders.length === 0 ? (
-            <Alert severity="info">No hay pedidos entregados (DELIVERED) disponibles para facturar.</Alert>
+            <Alert type="info">No hay pedidos entregados (DELIVERED) disponibles para facturar.</Alert>
           ) : (
-            <TextField label="Pedido Entregado *" select value={selectedOrder}
-              onChange={(e) => setSelectedOrder(e.target.value)} fullWidth>
+            <Select label="Pedido Entregado" required value={selectedOrder}
+              onChange={(e) => setSelectedOrder(e.target.value)}>
+              <option value="">— Seleccionar —</option>
               {deliveredOrders.map((o) => (
-                <MenuItem key={o.id} value={o.id}>
+                <option key={o.id} value={o.id}>
                   {o.order_number} — {o.client_name} — Q {Number(o.total).toFixed(2)}
-                </MenuItem>
+                </option>
               ))}
-            </TextField>
+            </Select>
           )}
-        </Box>
+        </div>
       </FormModal>
 
-      {/* ── Cancel invoice ── */}
       <FormModal open={cancelModal} onClose={() => setCancelModal(false)} onSubmit={submitCancel}
         title={`Anular Factura ${cancelInvoice?.invoice_number || ''}`} loading={saving} submitLabel="Anular">
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
-          {error && <Alert severity="error">{error}</Alert>}
-          <TextField label="Motivo de Anulación *" value={cancelReason}
-            onChange={(e) => setCancelReason(e.target.value)} fullWidth multiline rows={3}
-            helperText="Mínimo 10 caracteres" />
-        </Box>
+        <div className="space-y-4">
+          {error && <Alert>{error}</Alert>}
+          <Textarea label="Motivo de Anulación" required value={cancelReason}
+            onChange={(e) => setCancelReason(e.target.value)} rows={3} />
+        </div>
       </FormModal>
 
-      {/* ── Detail modal ── */}
       <FormModal open={detailModal} onClose={() => setDetailModal(false)}
-        title={`Factura ${detailInvoice?.invoice_number || ''}`} submitLabel=""
-        onSubmit={() => setDetailModal(false)} maxWidth="md">
+        title={`Factura ${detailInvoice?.invoice_number || ''}`} submitLabel="" maxWidth="md">
         {detailInvoice && (
-          <Box sx={{ mt: 1 }}>
-            <Box sx={{ display: 'flex', gap: 4, mb: 2 }}>
-              <Box>
-                <Typography variant="body2"><strong>Cliente:</strong> {detailInvoice.client_name}</Typography>
-                <Typography variant="body2"><strong>NIT:</strong> {detailInvoice.client_nit}</Typography>
-                <Typography variant="body2"><strong>Pedido:</strong> {detailInvoice.order_number}</Typography>
-              </Box>
-              <Box>
-                <Typography variant="body2"><strong>Estado:</strong> <StatusBadge status={detailInvoice.status} /></Typography>
-                <Typography variant="body2"><strong>Total:</strong> Q {Number(detailInvoice.total).toFixed(2)}</Typography>
-                <Typography variant="body2"><strong>Tipo:</strong> {detailInvoice.document_type_display}</Typography>
-              </Box>
-              {detailInvoice.fel_uuid && (
-                <Box>
-                  <Typography variant="body2"><strong>FEL UUID:</strong> {detailInvoice.fel_uuid}</Typography>
-                  <Typography variant="body2"><strong>FEL Serie:</strong> {detailInvoice.fel_series}</Typography>
-                  <Typography variant="body2"><strong>FEL Número:</strong> {detailInvoice.fel_number}</Typography>
-                </Box>
-              )}
-            </Box>
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-4">
+              <div><span className="text-xs text-gray-400">Cliente</span><p className="font-semibold">{detailInvoice.client_name}</p></div>
+              <div><span className="text-xs text-gray-400">NIT</span><p className="font-semibold">{detailInvoice.client_nit}</p></div>
+              <div><span className="text-xs text-gray-400">Pedido</span><p className="font-semibold">{detailInvoice.order_number}</p></div>
+              <div><span className="text-xs text-gray-400">Total</span><p className="font-semibold">Q {Number(detailInvoice.total).toFixed(2)}</p></div>
+              <div><span className="text-xs text-gray-400">Estado</span><p><StatusBadge status={detailInvoice.status} /></p></div>
+              <div><span className="text-xs text-gray-400">FEL UUID</span><p className="font-semibold text-sm break-all">{detailInvoice.fel_uuid || '—'}</p></div>
+            </div>
             {detailInvoice.items?.length > 0 && (
-              <Paper variant="outlined">
-                <Table size="small">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Producto</TableCell>
-                      <TableCell>Descripción</TableCell>
-                      <TableCell>Unidad</TableCell>
-                      <TableCell>Cantidad</TableCell>
-                      <TableCell>Precio Unit.</TableCell>
-                      <TableCell>Subtotal</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {detailInvoice.items.map((it) => (
-                      <TableRow key={it.id}>
-                        <TableCell>{it.product_code}</TableCell>
-                        <TableCell>{it.description}</TableCell>
-                        <TableCell>{it.display_unit}</TableCell>
-                        <TableCell>{it.display_qty}</TableCell>
-                        <TableCell>Q {Number(it.unit_price).toFixed(4)}</TableCell>
-                        <TableCell>Q {Number(it.subtotal).toFixed(2)}</TableCell>
-                      </TableRow>
+              <div className="border border-gray-200 rounded-xl overflow-hidden mt-4">
+                <table className="w-full text-sm">
+                  <thead><tr className="bg-eggshell">
+                    <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500">Producto</th>
+                    <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500">Cantidad</th>
+                    <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500">Precio Unit.</th>
+                    <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500">Total</th>
+                  </tr></thead>
+                  <tbody>
+                    {detailInvoice.items.map((it, i) => (
+                      <tr key={i} className="border-t border-gray-100">
+                        <td className="px-3 py-2">{it.product_name || it.product || it.description}</td>
+                        <td className="px-3 py-2">{it.quantity}</td>
+                        <td className="px-3 py-2">Q {Number(it.unit_price).toFixed(2)}</td>
+                        <td className="px-3 py-2">Q {Number(it.line_total).toFixed(2)}</td>
+                      </tr>
                     ))}
-                  </TableBody>
-                </Table>
-              </Paper>
+                  </tbody>
+                </table>
+              </div>
             )}
-            {detailInvoice.cancel_reason && (
-              <Alert severity="warning" sx={{ mt: 2 }}>
-                <strong>Anulada:</strong> {detailInvoice.cancel_reason}
-              </Alert>
-            )}
-          </Box>
+          </div>
         )}
       </FormModal>
     </>
